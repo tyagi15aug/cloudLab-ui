@@ -1,0 +1,94 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Design tokens. Every color a component uses comes from one of these
+ * variables (never a raw hex value) so light/dark mode is nothing more
+ * than swapping the values below — see tailwind.config.ts for how they're
+ * exposed as Tailwind classes (bg-surface, text-ink, border-border, ...).
+ *
+ * Palette is a warm, editorial neutral (cream/charcoal) with a single
+ * terracotta accent, in the spirit of Anthropic's product design language.
+ */
+:root {
+  --color-surface: 250 249 246;
+  --color-surface-raised: 255 255 255;
+  --color-surface-sunken: 243 241 235;
+
+  --color-ink: 33 29 24;
+  --color-ink-muted: 92 86 76;
+  --color-ink-faint: 148 141 128;
+
+  --color-border: 224 219 208;
+  --color-border-strong: 200 193 178;
+
+  --color-accent: 204 122 92;
+  --color-accent-hover: 184 103 75;
+  --color-accent-ink: 255 255 255;
+  --color-accent-subtle: 245 227 219;
+
+  --color-danger: 191 66 53;
+  --color-danger-subtle: 249 224 220;
+
+  --color-success: 74 124 89;
+  --color-success-subtle: 224 237 227;
+
+  --color-warning: 176 122 39;
+  --color-warning-subtle: 245 232 209;
+}
+
+.dark {
+  --color-surface: 26 24 22;
+  --color-surface-raised: 36 33 29;
+  --color-surface-sunken: 20 19 17;
+
+  --color-ink: 240 237 230;
+  --color-ink-muted: 178 171 158;
+  --color-ink-faint: 118 111 100;
+
+  --color-border: 58 54 48;
+  --color-border-strong: 79 74 65;
+
+  --color-accent: 224 141 111;
+  --color-accent-hover: 235 158 130;
+  --color-accent-ink: 31 20 15;
+  --color-accent-subtle: 61 40 32;
+
+  --color-danger: 224 110 96;
+  --color-danger-subtle: 58 30 27;
+
+  --color-success: 122 173 137;
+  --color-success-subtle: 32 46 36;
+
+  --color-warning: 212 158 84;
+  --color-warning-subtle: 51 41 24;
+}
+
+* {
+  border-color: rgb(var(--color-border));
+}
+
+html {
+  color-scheme: light;
+}
+
+html.dark {
+  color-scheme: dark;
+}
+
+body {
+  @apply bg-surface text-ink antialiased;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+}
+
+::selection {
+  background-color: rgb(var(--color-accent-subtle));
+  color: rgb(var(--color-ink));
+}
+
+/* Focus ring: visible for keyboard users, quiet for mouse users. */
+:focus-visible {
+  outline: 2px solid rgb(var(--color-accent));
+  outline-offset: 2px;
+}
