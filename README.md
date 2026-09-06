@@ -4,9 +4,11 @@ React console for the [Cloud Control Plane](../cloud-control-plane-api)
 project — see that repo's `docs/implementation-plan.md` for the full design
 and phase plan.
 
-**Status:** Phase 1.4 done. Application shell, navigation, and the S3
+**Status:** Phase 1 and 2 done. Application shell, navigation, and the S3
 list/create/delete workflow are implemented against the real backend API,
-with loading/empty/error states and light/dark theming throughout.
+with loading/empty/error states and light/dark theming throughout, plus a
+real Playwright E2E suite (`tests/e2e/`) driving the app in a browser
+against a live backend.
 
 ## Quickstart
 
@@ -85,10 +87,29 @@ npm run build
 - `src/test/utils.tsx#renderWithProviders` wraps a component in a fresh
   `QueryClientProvider` (retries off) per test.
 
+### End-to-end (Playwright)
+
+```bash
+# 1. start the real backend first (from cloud-control-plane-api):
+./scripts/dev-up.sh
+
+# 2. then, from this repo:
+npx playwright install --with-deps chromium   # first time only
+npm run test:e2e          # headless
+npm run test:e2e:ui       # Playwright's UI mode, for debugging
+```
+
+Unlike the Vitest suite, these drive a real browser against a **real
+running backend** — no MSW. See `tests/e2e/README.md` for what each spec
+covers and why `resilience.spec.ts` uses network interception rather than
+a real failure source (that's Phase 4).
+
 ## CI
 
-`.github/workflows/ci.yml` runs lint, type check, tests, and the production
-build on every push/PR to `main`.
+`.github/workflows/ci.yml` has two jobs: `test` (lint, type check, unit
+tests, build) and `e2e` (checks out the sibling API repo, brings up the
+real `docker compose` stack, and runs the Playwright suite against it),
+both on every push/PR to `main`.
 
 ## Roadmap
 
