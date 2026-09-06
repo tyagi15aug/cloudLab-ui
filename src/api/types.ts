@@ -116,6 +116,43 @@ export interface CreateFailureRuleRequest {
   probability?: number;
 }
 
+// -- Dev: operation history (mirrors app/core/operations.py +
+// app/models/operations.py, Phase 5) ----------------------------------------
+
+export interface OperationResource {
+  id: number;
+  service: string;
+  operation: string;
+  provider: string;
+  status: "success" | "error";
+  duration_ms: number;
+  request_id: string | null;
+  resource: string | null;
+  error: string | null;
+  retryable: boolean | null;
+  timestamp: number;
+}
+
+export interface OperationList {
+  items: OperationResource[];
+}
+
+export interface OperationMetricsByOperation {
+  service: string;
+  operation: string;
+  count: number;
+  error_count: number;
+  avg_duration_ms: number;
+}
+
+export interface OperationMetrics {
+  total_count: number;
+  error_count: number;
+  error_rate: number;
+  avg_duration_ms: number;
+  by_operation: OperationMetricsByOperation[];
+}
+
 export type ErrorCode =
   | "VALIDATION_ERROR"
   | "RESOURCE_NOT_FOUND"

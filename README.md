@@ -4,15 +4,18 @@ React console for the [Cloud Control Plane](../cloud-control-plane-api)
 project — see that repo's `docs/implementation-plan.md` for the full design
 and phase plan.
 
-**Status:** Phases 1–4 done. Application shell, navigation, and S3, SQS,
+**Status:** Phases 1–5 done. Application shell, navigation, and S3, SQS,
 and DynamoDB workflows are implemented against the real backend API, with
 loading/empty/error states and light/dark theming throughout, plus a real
 Playwright E2E suite (`tests/e2e/`) driving the app in a browser against a
 live backend. SQS and DynamoDB share the same resource-list/dialog/table
 primitives S3 introduced in Phase 1 — see "Architecture" and "Phase 3"
-below for how that reuse works. A Developer Tools page (Phase 4) can inject
-real backend failures (500s, timeouts, throttling, latency, connection
-failures) into any resource operation on demand — see "Phase 4" below.
+below for how that reuse works. A Developer Tools section adds a Failure
+Injection page (Phase 4) that can inject real backend failures (500s,
+timeouts, throttling, latency, connection failures) into any resource
+operation on demand, and an Operations page (Phase 5) showing recent
+requests, per-operation metrics, and a request detail view — see "Phase 4"
+and "Phase 5" below.
 
 ## Quickstart
 
@@ -57,9 +60,9 @@ components/resource/         — ResourceTable, ResourceListSection, ConfirmDial
 components/s3/               — BucketList, CreateBucketDialog, DeleteBucketDialog
 components/sqs/               — QueueList, CreateQueueDialog, SendMessageDialog
 components/dynamodb/          — TableList, CreateTableDialog, PutItemDialog
-pages/                       — DashboardPage, S3Page, SqsPage, QueueDetailPage, DynamoDbPage, TableDetailPage, DeveloperToolsPage, NotFoundPage
-api/                         — client.ts (fetch wrapper + ApiError), types.ts (mirrors the backend's Pydantic models), s3.ts, sqs.ts, dynamodb.ts, dev.ts (Phase 4)
-hooks/                       — useBuckets/useCreateBucket/useDeleteBucket, useQueues/useMessages/useSendMessage, useTables/useItems/usePutItem, useFailures/useCreateFailure/useDeleteFailure (all TanStack Query), useCursorPager, useHealth
+pages/                       — DashboardPage, S3Page, SqsPage, QueueDetailPage, DynamoDbPage, TableDetailPage, DeveloperToolsPage, OperationsPage (Phase 5), NotFoundPage
+api/                         — client.ts (fetch wrapper + ApiError), types.ts (mirrors the backend's Pydantic models), s3.ts, sqs.ts, dynamodb.ts, dev.ts (Phase 4), operations.ts (Phase 5)
+hooks/                       — useBuckets/useCreateBucket/useDeleteBucket, useQueues/useMessages/useSendMessage, useTables/useItems/usePutItem, useFailures/useCreateFailure/useDeleteFailure, useOperations/useOperationMetrics/useClearOperations (all TanStack Query), useCursorPager, useHealth
 theme/                       — ThemeProvider
 ```
 
@@ -85,7 +88,7 @@ theme/                       — ThemeProvider
 ## Tests
 
 ```bash
-npm test          # vitest — 66 tests across S3, SQS, DynamoDB, Developer Tools components, shared resource primitives, and ThemeProvider
+npm test          # vitest — 71 tests across S3, SQS, DynamoDB, Developer Tools, Operations components, shared resource primitives, and ThemeProvider
 npm run lint
 npm run typecheck
 npm run build
@@ -116,7 +119,9 @@ in DynamoDB (guarding the backend's `Decimal` round-trip) and a careful
 single "Receive messages" click in SQS (see `tests/e2e/README.md`'s note
 on why). `failure-injection.spec.ts` and `resilience.spec.ts` drive the
 real `/api/dev/failures` endpoint (Phase 4) rather than any network
-interception — see `tests/e2e/README.md` for what each spec covers.
+interception, and `operations.spec.ts` (Phase 5) verifies a real resource
+action shows up in `/api/dev/operations` and its metrics — see
+`tests/e2e/README.md` for what each spec covers.
 
 ## CI
 
@@ -180,7 +185,7 @@ rather than forcing artificial uniformity (Phase 3.1's guidance):
   actually accepts.
 
 EC2 and VPC remain in the sidebar (badged "Soon") for the resource
-roadmap Phase 5+ covers.
+roadmap later phases cover.
 
 ## Phase 4 — Failure Injection
 
@@ -221,4 +226,50 @@ no injected failure can leave the UI permanently stuck. The design:
    the full story.
 
 EC2 and VPC remain in the sidebar (badged "Soon") for the resource
-roadmap Phase 5+ covers.
+roadmap later phases cover.
+
+## Phase 5 — Observability and Operation Debugging
+
+Phase 5's objective was to make the system explain what happened, per
+Section 5 of the plan (request IDs, structured logs, operation history,
+request detail, metrics). Requests IDs and structured logging already
+existed from Phase 1 (`app/main.py`'s middleware, `app/core/logging.py`);
+this phase adds the developer-facing surface on top of them:
+
+1. **Same seam as Failure Injection, again.** `ProviderService._call()`
+   already logs every operation's outcome — Phase 5 adds one more line
+   there, `operation_recorder.record(...)`, right alongside it. Every
+   resource operation is recorded with zero per-service code, the same way
+   every operation already got failure injection for free in Phase 4. An
+   operation that Phase 4 failure-injected shows up here too, since by the
+   time `_call()` is logging the outcome, an injected `AppError` and a real
+   translated one are indistinguishable — which is itself a nice property:
+   the history panel shows *actual* behavior, not a sanitized view of it.
+2. **An in-memory ring buffer plus cumulative counters**, not persisted —
+   the same "process-wide singleton, `threading.Lock()`-guarded" pattern as
+   the failure-injection registry (`app/core/operations.py`). The ring
+   buffer caps recent history at 200 entries; separate running counters
+   (total count, error count, duration sum, per-operation breakdown) are
+   kept outside the buffer so `/api/dev/operations/metrics` stays accurate
+   for the whole process lifetime even after old entries age out of
+   history.
+3. **The Operations page** (`/dev/operations`) shows four stat tiles
+   (total requests, errors, error rate, average latency), a "Recent
+   operations" table built on the same `ResourceListSection` every other
+   resource list uses, and a "Details" action per row that opens a `Dialog`
+   with the operation's full record — request ID, provider, resource,
+   error code, retryable flag, and timestamp. This is the plan's Section
+   5.3/5.4 in one page: history and detail view together, since the list
+   response already carries everything the detail view needs.
+4. **One deliberate exception to this app's `exact: true` invalidation
+   rule.** Every other mutation in this codebase invalidates its query key
+   with `exact: true` (see Phase 3's SQS bug below for why that convention
+   exists). `useClearOperations` is the one intentional exception: clearing
+   history is meant to invalidate both the operations list and its nested
+   metrics query under the shared `["dev","operations"]` prefix, and unlike
+   SQS's `ReceiveMessage`, both are idempotent GETs with no vanishing-data
+   race to guard against — see `useOperations.ts`'s comment for the
+   reasoning.
+
+EC2 and VPC remain in the sidebar (badged "Soon") for the resource
+roadmap later phases cover.

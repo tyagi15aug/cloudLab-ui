@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom";
-import { BoltIcon, BucketIcon } from "../icons";
+import { ActivityIcon, BoltIcon, BucketIcon } from "../icons";
 import { Badge } from "../ui/Badge";
 
 interface NavItem {
@@ -21,11 +21,14 @@ const resourceItems: NavItem[] = [
   { label: "VPC", icon: BucketIcon, soon: true },
 ];
 
-// Phase 4: a separate section from "Resources" — failure injection isn't a
-// cloud resource, it's a capability that changes how the resources above
-// behave (see the plan's API design section 13, which namespaces this the
-// same way: /api/dev/... rather than /api/resources/...).
-const devToolsItems: NavItem[] = [{ to: "/dev/failures", label: "Failure Injection", icon: BoltIcon }];
+// Phase 4/5: a separate section from "Resources" — neither of these is a
+// cloud resource; both are capabilities that observe or change how the
+// resources above behave (see the plan's API design section 13, which
+// namespaces both the same way: /api/dev/... rather than /api/resources/...).
+const devToolsItems: NavItem[] = [
+  { to: "/dev/failures", label: "Failure Injection", icon: BoltIcon },
+  { to: "/dev/operations", label: "Operations", icon: ActivityIcon },
+];
 
 function NavSection({ title, items }: { title: string; items: NavItem[] }) {
   return (
@@ -80,7 +83,7 @@ export function Sidebar() {
       </nav>
 
       <div className="border-t border-border px-4 py-3">
-        <p className="text-xs text-ink-faint">Phase 4 · Failure Injection</p>
+        <p className="text-xs text-ink-faint">Phase 5 · Observability</p>
       </div>
     </aside>
   );

@@ -4,6 +4,7 @@ import { DashboardPage } from "./pages/DashboardPage";
 import { DeveloperToolsPage } from "./pages/DeveloperToolsPage";
 import { DynamoDbPage } from "./pages/DynamoDbPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
+import { OperationsPage } from "./pages/OperationsPage";
 import { QueueDetailPage } from "./pages/QueueDetailPage";
 import { S3Page } from "./pages/S3Page";
 import { SqsPage } from "./pages/SqsPage";
@@ -20,6 +21,7 @@ export function App() {
         <Route path="dynamodb" element={<DynamoDbPage />} />
         <Route path="dynamodb/:name" element={<TableDetailPage />} />
         <Route path="dev/failures" element={<DeveloperToolsPage />} />
+        <Route path="dev/operations" element={<OperationsPage />} />
         <Route path="404" element={<NotFoundPage />} />
         <Route path="*" element={<Navigate to="/404" replace />} />
       </Route>

@@ -127,3 +127,11 @@ export function BoltIcon(props: IconProps) {
     </svg>
   );
 }
+
+export function ActivityIcon(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M2.5 10.5h3l2-5.5 3 10.5 2-8 1.5 3h3.5" />
+    </svg>
+  );
+}

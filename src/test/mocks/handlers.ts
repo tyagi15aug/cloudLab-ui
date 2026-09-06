@@ -6,6 +6,7 @@ import type {
   DynamoItem,
   FailureRuleResource,
   MessageResource,
+  OperationMetrics,
   QueueResource,
   TableResource,
 } from "../../api/types";
@@ -162,6 +163,25 @@ export const handlers = [
   }),
 
   http.delete("/api/dev/failures", () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  // -- Dev: operation history ---------------------------------------------
+  http.get("/api/dev/operations/metrics", () => {
+    return HttpResponse.json<OperationMetrics>({
+      total_count: 0,
+      error_count: 0,
+      error_rate: 0,
+      avg_duration_ms: 0,
+      by_operation: [],
+    });
+  }),
+
+  http.get("/api/dev/operations", () => {
+    return HttpResponse.json({ items: [] });
+  }),
+
+  http.delete("/api/dev/operations", () => {
     return new HttpResponse(null, { status: 204 });
   }),
 ];

@@ -1,4 +1,4 @@
-# E2E tests (Phase 2.3, extended through Phase 4)
+# E2E tests (Phase 2.3, extended through Phase 5)
 
 [Playwright](https://playwright.dev) tests that drive the real app in a
 real browser against a **real backend** — no MSW, no mocks, no network
@@ -32,6 +32,7 @@ interception anywhere in this suite as of Phase 4 (see the note below on
 | `theme.spec.ts` | Light/dark toggle, and that the choice survives a reload (the pre-paint script in `index.html`) |
 | `failure-injection.spec.ts` | The Developer Tools page itself: inject a rule through the UI, watch a real resource action fail because of it, clear it, watch it succeed |
 | `resilience.spec.ts` | UI behavior on a failed list load, a failed create, and artificial latency — now driven by the real failure-injection API, see the note below |
+| `operations.spec.ts` | The Operations page (Phase 5): a real resource action shows up in history/metrics, an injected failure appears with its error code, the detail dialog, and Clear history |
 | `global-setup.ts` | Fails fast with a clear message if no backend is reachable, instead of 20 confusing timeouts |
 
 ## A note on sqs.spec.ts and message polling
@@ -61,6 +62,15 @@ for: real HTTP request → `ProviderService._call()` → injected `AppError` →
 real error envelope → UI error state. Each test clears every rule in
 `finally` so a failure can't leak into whichever spec runs next (all E2E
 specs share one backend process and its process-wide failure registry).
+
+## operations.spec.ts and cross-spec state
+
+`/api/dev/operations` (Phase 5) is a process-wide history shared by every
+spec in this suite, the same way `/api/dev/failures`'s rule registry is —
+so `operations.spec.ts` clears it in both `beforeEach` and `afterEach`
+rather than just one or the other: `beforeEach` so an earlier spec's
+requests can't inflate a count this file asserts on, `afterEach` so this
+file doesn't leave operations behind for whichever spec runs next.
 
 ## Environment note
 
