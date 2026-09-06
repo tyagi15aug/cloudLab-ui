@@ -15,8 +15,8 @@ interface NavItem {
 // pretending backends that don't exist yet are live.
 const resourceItems: NavItem[] = [
   { to: "/s3", label: "S3", icon: BucketIcon },
-  { label: "SQS", icon: BucketIcon, soon: true },
-  { label: "DynamoDB", icon: BucketIcon, soon: true },
+  { to: "/sqs", label: "SQS", icon: BucketIcon },
+  { to: "/dynamodb", label: "DynamoDB", icon: BucketIcon },
   { label: "EC2", icon: BucketIcon, soon: true },
   { label: "VPC", icon: BucketIcon, soon: true },
 ];

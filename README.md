@@ -4,11 +4,13 @@ React console for the [Cloud Control Plane](../cloud-control-plane-api)
 project — see that repo's `docs/implementation-plan.md` for the full design
 and phase plan.
 
-**Status:** Phase 1 and 2 done. Application shell, navigation, and the S3
-list/create/delete workflow are implemented against the real backend API,
-with loading/empty/error states and light/dark theming throughout, plus a
-real Playwright E2E suite (`tests/e2e/`) driving the app in a browser
-against a live backend.
+**Status:** Phases 1–3 done. Application shell, navigation, and S3, SQS,
+and DynamoDB workflows are implemented against the real backend API, with
+loading/empty/error states and light/dark theming throughout, plus a real
+Playwright E2E suite (`tests/e2e/`) driving the app in a browser against a
+live backend. SQS and DynamoDB share the same resource-list/dialog/table
+primitives S3 introduced in Phase 1 — see "Architecture" and "Phase 3"
+below for how that reuse works.
 
 ## Quickstart
 
@@ -48,34 +50,40 @@ theme changes while "system" is selected.
 main.tsx                    — providers: ThemeProvider, QueryClientProvider, BrowserRouter
 App.tsx                     — route table
 components/layout/          — AppShell, Sidebar, TopBar, ThemeToggle, StatusPill
-components/ui/               — Button, Dialog, Badge, EmptyState, ErrorState, Skeleton — generic, resource-agnostic
+components/ui/               — Button, Dialog, Badge, EmptyState, ErrorState, Skeleton, FormField — generic, resource-agnostic
+components/resource/         — ResourceTable, ResourceListSection, ConfirmDialog, Pagination, SummaryCard — Phase 3's shared resource primitives
 components/s3/               — BucketList, CreateBucketDialog, DeleteBucketDialog
-pages/                       — DashboardPage, S3Page, NotFoundPage
-api/                         — client.ts (fetch wrapper + ApiError), types.ts (mirrors the backend's Pydantic models), s3.ts
-hooks/                       — useBuckets/useCreateBucket/useDeleteBucket (TanStack Query), useHealth
+components/sqs/               — QueueList, CreateQueueDialog, SendMessageDialog
+components/dynamodb/          — TableList, CreateTableDialog, PutItemDialog
+pages/                       — DashboardPage, S3Page, SqsPage, QueueDetailPage, DynamoDbPage, TableDetailPage, NotFoundPage
+api/                         — client.ts (fetch wrapper + ApiError), types.ts (mirrors the backend's Pydantic models), s3.ts, sqs.ts, dynamodb.ts
+hooks/                       — useBuckets/useCreateBucket/useDeleteBucket, useQueues/useMessages/useSendMessage, useTables/useItems/usePutItem (all TanStack Query), useCursorPager, useHealth
 theme/                       — ThemeProvider
 ```
 
 - **State management**: [TanStack Query](https://tanstack.com/query) owns
-  all server state (buckets, health) — caching, loading/error states, and
-  cache invalidation after mutations, rather than hand-rolled
-  `useState`/`useEffect` data fetching. There's no separate client-state
-  library; the only client state here (dialog open/closed, form input,
-  theme preference) is small enough for plain `useState`/context.
+  all server state (buckets, queues, tables, health) — caching,
+  loading/error states, and cache invalidation after mutations, rather
+  than hand-rolled `useState`/`useEffect` data fetching. There's no
+  separate client-state library; the only client state here (dialog
+  open/closed, form input, theme preference) is small enough for plain
+  `useState`/context.
 - **API client** (`api/client.ts`): every non-2xx response is parsed into
   the backend's unified error shape and thrown as an `ApiError`
   (`code`/`message`/`requestId`/`retryable`) — components never handle a
   raw `fetch` rejection or an ad-hoc error shape.
-- **BucketList is presentational**: it takes `buckets`/`isLoading`/`error`
-  as props and decides what to render (skeleton, error, empty, or the
-  table) — it doesn't call any hooks itself. `S3Page` is the only place
-  that wires it to real data. This is why its tests (`BucketList.test.tsx`)
-  don't need MSW or a QueryClientProvider at all.
+- **Resource list components are presentational**: `BucketList`,
+  `QueueList`, and `TableList` each take `data`/`isLoading`/`error` as
+  props and decide what to render — they don't call any hooks themselves.
+  Each resource's page (`S3Page`, `SqsPage`, `DynamoDbPage`) is the only
+  place that wires its list to real data. This is why their tests don't
+  need MSW or a `QueryClientProvider` at all — only a `MemoryRouter`, since
+  each list renders a `Link` to its resource's detail page.
 
 ## Tests
 
 ```bash
-npm test          # vitest — 12 tests: BucketList, CreateBucketDialog, ThemeProvider
+npm test          # vitest — 61 tests across S3, SQS, DynamoDB components, shared resource primitives, and ThemeProvider
 npm run lint
 npm run typecheck
 npm run build
@@ -100,9 +108,13 @@ npm run test:e2e:ui       # Playwright's UI mode, for debugging
 ```
 
 Unlike the Vitest suite, these drive a real browser against a **real
-running backend** — no MSW. See `tests/e2e/README.md` for what each spec
-covers and why `resilience.spec.ts` uses network interception rather than
-a real failure source (that's Phase 4).
+running backend** — no MSW. `sqs.spec.ts` and `dynamodb.spec.ts` cover
+their full create → use → delete lifecycles, including a float-value item
+in DynamoDB (guarding the backend's `Decimal` round-trip) and a careful
+single "Receive messages" click in SQS (see `tests/e2e/README.md`'s note
+on why). See that file for what each spec covers and why
+`resilience.spec.ts` uses network interception rather than a real failure
+source (that's Phase 4).
 
 ## CI
 
@@ -111,11 +123,59 @@ tests, build) and `e2e` (checks out the sibling API repo, brings up the
 real `docker compose` stack, and runs the Playwright suite against it),
 both on every push/PR to `main`.
 
-## Roadmap
+## Phase 3 — SQS, DynamoDB, and the shared resource components
 
-SQS, DynamoDB, EC2, and VPC are listed in the sidebar (badged "Soon") to
-signal where this is headed, per the plan's resource roadmap — but nothing
-backs them yet; only S3 is implemented end-to-end (Phase 1 scope). Phase 3
-of the plan covers extracting `BucketList`/`CreateBucketDialog`'s patterns
-into resource-agnostic components once a second resource exists to
-generalize from.
+Phase 3's exit criterion was that adding a new resource should need
+significantly less duplicated UI code than the first one did. The approach
+here was to build the shared primitives *before* SQS or DynamoDB existed
+to prove they generalize, retrofit S3 onto them, and only then build the
+new resources on top:
+
+1. **Extract first, from S3 alone.** `ResourceTable`/`ResourceListSection`
+   (the loading/error/empty/table state machine originally inline in
+   `BucketList`), `ConfirmDialog` (generalized from `DeleteBucketDialog`),
+   `Pagination` + `useCursorPager` (cursor-stack pagination), `FormField` +
+   `textInputClassName` (label/input/error layout), and `SummaryCard`
+   (from `DashboardPage`'s dashboard tiles) all live in
+   `components/resource/` and `components/ui/` now.
+2. **Retrofit `BucketList` onto them with zero test changes.** Its
+   external prop API (`buckets`/`isLoading`/`error`/`onDelete`/...) didn't
+   change, and all of its existing tests passed unmodified against the
+   refactored implementation — real evidence the extraction preserved
+   behavior rather than just moving code around.
+3. **Build SQS and DynamoDB on the same primitives.** `QueueList` and
+   `TableList` are each ~40 lines of column definitions plus a
+   `ResourceListSection` call — no re-implementation of skeleton/error/empty
+   states. `CreateQueueDialog`/`SendMessageDialog`/`CreateTableDialog`/
+   `PutItemDialog` are each a validation function plus `FormField`s. Delete
+   confirmations for queues, tables, messages, and items are all the same
+   `ConfirmDialog`, parameterized by title/message/danger.
+
+The two resources also deliberately differ where the *domain* differs,
+rather than forcing artificial uniformity (Phase 3.1's guidance):
+
+- **SQS's queue list doesn't paginate** (`ListQueues` has no `next_cursor`
+  in either the API or `QueueList`'s type) — an honest scope decision, not
+  a missing feature, documented in the backend. DynamoDB's item list does,
+  using the real `useCursorPager`/`Pagination` pair.
+- **SQS messages are a "peek," not a live list.** `QueueDetailPage` says so
+  directly in the UI, and the message list is fetched only on an explicit
+  "Receive messages" click — never an automatic refetch. This came from a
+  real bug: `ReceiveMessage` hides what it returns from other
+  `ReceiveMessage` calls for the queue's visibility timeout, so an
+  automatic refetch (originally triggered both by an explicit
+  `invalidateQueries(messagesQueryKey)` and, subtler, by TanStack Query's
+  *prefix-key matching* on `invalidateQueries(queuesQueryKey)` cascading
+  into the nested `messagesQueryKey`) would silently consume a just-sent
+  message and make it look like it never arrived. The fix, and the full
+  story, is in `src/hooks/useQueues.ts`'s comments — every
+  `queuesQueryKey`/`tablesQueryKey` invalidation in `useQueues.ts` and
+  `useTables.ts` now passes `exact: true` for exactly this reason.
+- **DynamoDB items are raw JSON**, edited via a plain JSON textarea
+  (`PutItemDialog`) rather than a schema-aware form — items in this app are
+  genuinely freeform (mirrors the backend's `ItemResource`), so a form that
+  pretended to know a table's schema would be dishonest about what the API
+  actually accepts.
+
+EC2 and VPC remain in the sidebar (badged "Soon") for the resource
+roadmap Phase 4+ covers.

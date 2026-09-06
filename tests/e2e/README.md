@@ -27,9 +27,23 @@ can't currently produce on demand (see `resilience.spec.ts`).
 | File | Covers |
 |---|---|
 | `s3.spec.ts` | Create/list/delete lifecycle, client-side validation, a server-side error rendered through the real error envelope |
+| `sqs.spec.ts` | Create queue → send → receive → delete message → delete queue, plus client-side name validation |
+| `dynamodb.spec.ts` | Create table → put item (including a float, to catch the `Decimal` round-trip bug) → delete item → delete table, plus client-side validation |
 | `theme.spec.ts` | Light/dark toggle, and that the choice survives a reload (the pre-paint script in `index.html`) |
 | `resilience.spec.ts` | UI behavior on a failed list load and a failed create — see the note below |
 | `global-setup.ts` | Fails fast with a clear message if no backend is reachable, instead of 20 confusing timeouts |
+
+## A note on sqs.spec.ts and message polling
+
+SQS's `ReceiveMessage` isn't an idempotent "list" — it hides what it
+returns from other `ReceiveMessage` calls for the queue's visibility
+timeout. During Phase 3 development this caused a real bug (a sent message
+would seem to vanish) traced to TanStack Query's `invalidateQueries` doing
+prefix-key matching and triggering an unwanted extra receive; see the fix
+and comments in `src/hooks/useQueues.ts`. `sqs.spec.ts` is written to
+respect the same constraint: it clicks "Receive messages" exactly once
+after sending, rather than polling in a loop, so the test can't reintroduce
+the same race it exists to guard against.
 
 ## Why route interception for "resilience"
 

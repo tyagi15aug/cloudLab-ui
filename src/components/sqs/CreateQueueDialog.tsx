@@ -1,29 +1,26 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { ApiError } from "../../api/client";
-import { useCreateBucket } from "../../hooks/useBuckets";
+import { useCreateQueue } from "../../hooks/useQueues";
 import { Button } from "../ui/Button";
 import { Dialog } from "../ui/Dialog";
 import { FormField, textInputClassName } from "../ui/FormField";
 
-const NAME_PATTERN = /^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$/;
+const NAME_PATTERN = /^[A-Za-z0-9_-]+$/;
 
-/** A pragmatic subset of S3's real bucket-naming rules — enough to catch
- * the common mistakes client-side; the backend is still the source of
- * truth and will reject anything this misses. */
 function validateName(name: string): string | null {
-  if (name.length === 0) return "Bucket name is required.";
-  if (name.length < 3 || name.length > 63) return "Must be 3–63 characters long.";
+  if (name.length === 0) return "Queue name is required.";
+  if (name.length > 80) return "Must be 80 characters or fewer.";
   if (!NAME_PATTERN.test(name)) {
-    return "Use lowercase letters, numbers, dots, and hyphens only. Must start and end with a letter or number.";
+    return "Use letters, numbers, hyphens, and underscores only.";
   }
   return null;
 }
 
-export function CreateBucketDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function CreateQueueDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [name, setName] = useState("");
   const [touched, setTouched] = useState(false);
-  const mutation = useCreateBucket();
+  const mutation = useCreateQueue();
 
   const validationError = touched ? validateName(name) : null;
 
@@ -37,28 +34,25 @@ export function CreateBucketDialog({ open, onClose }: { open: boolean; onClose: 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setTouched(true);
-    const error = validateName(name);
-    if (error) return;
+    if (validateName(name)) return;
 
-    mutation.mutate(name, {
-      onSuccess: handleClose,
-    });
+    mutation.mutate(name, { onSuccess: handleClose });
   }
 
   const serverMessage =
     mutation.error instanceof ApiError ? mutation.error.message : mutation.error ? "Something went wrong." : null;
 
   return (
-    <Dialog open={open} onClose={handleClose} title="Create bucket">
+    <Dialog open={open} onClose={handleClose} title="Create queue">
       <form onSubmit={handleSubmit} noValidate>
         <FormField
-          id="bucket-name"
-          label="Bucket name"
+          id="queue-name"
+          label="Queue name"
           error={validationError}
-          hint="Globally unique, lowercase, 3–63 characters."
+          hint="Letters, numbers, hyphens, and underscores, up to 80 characters."
         >
           <input
-            id="bucket-name"
+            id="queue-name"
             name="name"
             type="text"
             autoFocus
@@ -67,9 +61,9 @@ export function CreateBucketDialog({ open, onClose }: { open: boolean; onClose: 
             value={name}
             onChange={(e) => setName(e.target.value)}
             onBlur={() => setTouched(true)}
-            placeholder="my-app-assets"
+            placeholder="order-events"
             aria-invalid={Boolean(validationError)}
-            aria-describedby={validationError ? "bucket-name-error" : undefined}
+            aria-describedby={validationError ? "queue-name-error" : undefined}
             className={textInputClassName(Boolean(validationError))}
           />
         </FormField>
@@ -85,7 +79,7 @@ export function CreateBucketDialog({ open, onClose }: { open: boolean; onClose: 
             Cancel
           </Button>
           <Button type="submit" variant="primary" loading={mutation.isPending}>
-            Create bucket
+            Create queue
           </Button>
         </div>
       </form>
