@@ -47,6 +47,9 @@ export function DeveloperToolsPage() {
   const operationOptions = useMemo(() => KNOWN_OPERATIONS_BY_SERVICE[service] ?? ["*"], [service]);
 
   function handleServiceChange(next: string) {
+    // Operation options are keyed per service — whatever was picked for the
+    // old service likely isn't a valid operation for the new one, so reset
+    // to "any operation" rather than leaving a stale, possibly-invalid value.
     setService(next);
     setOperation("*");
   }

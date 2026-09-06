@@ -2,10 +2,9 @@ import { ApiError } from "../../api/client";
 import { AlertIcon } from "../icons";
 import { Button } from "./Button";
 
-/** Maps an error to the copy + action the Error Model calls for
- * (docs/implementation-plan.md, "Error Model"): retryable errors get a
- * Retry button, permission errors are labeled distinctly, everything else
- * is just an actionable message — never a raw stack trace. */
+/** Turns an ApiError into copy + an action instead of a raw stack trace:
+ * retryable errors get a Retry button, permission errors are called out
+ * distinctly, everything else just gets an actionable message. */
 export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
   const isApiError = error instanceof ApiError;
   const message = isApiError ? error.message : "Something went wrong.";

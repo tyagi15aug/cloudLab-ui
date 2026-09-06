@@ -9,9 +9,9 @@ export interface PaginationProps {
 }
 
 /** Prev/Next controls for the cursor pagination every listing endpoint
- * uses (Phase 3.4) — pairs with the `useCursorPager` hook, which tracks
- * the cursor stack "Previous" needs (a cursor is forward-only by design;
- * see the backend's pagination docs). */
+ * uses — pairs with the `useCursorPager` hook, which tracks the cursor
+ * stack "Previous" needs (a cursor is forward-only by design; see the
+ * backend's pagination docs). */
 export function Pagination({ hasPrev, hasNext, onPrev, onNext, disabled }: PaginationProps) {
   if (!hasPrev && !hasNext) return null;
 

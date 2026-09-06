@@ -13,6 +13,10 @@ import { TableDetailPage } from "./pages/TableDetailPage";
 export function App() {
   return (
     <Routes>
+      {/* Every page renders inside AppShell (sidebar + top bar) — nesting
+          them under one parent route here instead of wrapping each page
+          component individually. Unknown paths land on /404 rather than
+          a blank screen. */}
       <Route element={<AppShell />}>
         <Route index element={<DashboardPage />} />
         <Route path="s3" element={<S3Page />} />

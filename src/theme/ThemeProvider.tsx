@@ -1,6 +1,11 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 
+// Two different things on purpose: `preference` is what the person picked
+// (including "system"), `resolvedTheme` is the actual light/dark value
+// that gets applied. Picking "system" doesn't mean we forget it was a
+// preference — if the OS theme changes later, we still need to know to
+// keep following it.
 export type ThemePreference = "light" | "dark" | "system";
 type ResolvedTheme = "light" | "dark";
 

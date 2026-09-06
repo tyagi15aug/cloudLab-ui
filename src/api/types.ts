@@ -90,7 +90,7 @@ export interface ItemList {
 }
 
 // -- Dev: failure injection (mirrors app/core/failure_injection.py +
-// app/models/failure_injection.py, Phase 4) --------------------------------
+// app/models/failure_injection.py) ------------------------------------------
 
 export type FailureType = "http_500" | "http_403" | "timeout" | "latency" | "throttle" | "connection_failure";
 
@@ -117,7 +117,7 @@ export interface CreateFailureRuleRequest {
 }
 
 // -- Dev: operation history (mirrors app/core/operations.py +
-// app/models/operations.py, Phase 5) ----------------------------------------
+// app/models/operations.py) -------------------------------------------------
 
 export interface OperationResource {
   id: number;

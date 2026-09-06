@@ -1,6 +1,9 @@
 import { apiClient } from "./client";
 import type { BucketList, BucketResource } from "./types";
 
+// Thin wrapper around one backend resource — one function per route, no
+// logic beyond building the URL. sqs.ts and dynamodb.ts follow the same
+// shape; hooks/useBuckets.ts is what actually calls these.
 const BASE = "/api/resources/s3/buckets";
 
 export interface ListBucketsParams {

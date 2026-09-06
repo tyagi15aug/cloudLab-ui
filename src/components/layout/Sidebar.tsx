@@ -9,10 +9,9 @@ interface NavItem {
   soon?: boolean;
 }
 
-// The roadmap (docs/implementation-plan.md, Section 7) adds SQS, DynamoDB,
-// EC2, and VPC after S3. Listing them here — disabled, badged "Soon" —
-// signals the resource-oriented architecture is meant to grow, without
-// pretending backends that don't exist yet are live.
+// EC2 and VPC are on the roadmap but don't have a backend yet. Listing
+// them here — disabled, badged "Soon" — signals where this is headed
+// without pretending they're live.
 const resourceItems: NavItem[] = [
   { to: "/s3", label: "S3", icon: BucketIcon },
   { to: "/sqs", label: "SQS", icon: BucketIcon },
@@ -21,10 +20,10 @@ const resourceItems: NavItem[] = [
   { label: "VPC", icon: BucketIcon, soon: true },
 ];
 
-// Phase 4/5: a separate section from "Resources" — neither of these is a
+// Separate section from "Resources" on purpose — neither of these is a
 // cloud resource; both are capabilities that observe or change how the
-// resources above behave (see the plan's API design section 13, which
-// namespaces both the same way: /api/dev/... rather than /api/resources/...).
+// resources above behave, which is also why the API namespaces them
+// under /api/dev/... instead of /api/resources/....
 const devToolsItems: NavItem[] = [
   { to: "/dev/failures", label: "Failure Injection", icon: BoltIcon },
   { to: "/dev/operations", label: "Operations", icon: ActivityIcon },

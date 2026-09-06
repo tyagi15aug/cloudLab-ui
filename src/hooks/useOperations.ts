@@ -29,12 +29,12 @@ export function useClearOperations() {
     mutationFn: () => clearOperations(),
     onSuccess: () => {
       // Deliberately *not* `exact: true` here, unlike every other
-      // invalidation in this app (see useQueues.ts's comments on the
-      // Phase 3 SQS bug for why that convention exists). Clearing history
-      // is meant to invalidate both the list and the nested metrics query
-      // sharing the ["dev","operations"] prefix, and both are idempotent
-      // GETs — there's no vanishing-data race like SQS's ReceiveMessage
-      // to guard against here, so the cascade is exactly what's wanted.
+      // invalidation in this app (see useQueues.ts for why that
+      // convention exists). Clearing history is meant to invalidate both
+      // the list and the nested metrics query sharing the
+      // ["dev","operations"] prefix, and both are idempotent GETs —
+      // there's no vanishing-data race like SQS's ReceiveMessage to guard
+      // against here, so the cascade is exactly what's wanted.
       queryClient.invalidateQueries({ queryKey: operationsQueryKey });
     },
   });

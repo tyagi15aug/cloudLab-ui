@@ -16,11 +16,11 @@ export interface ConfirmDialogProps {
   error?: unknown;
 }
 
-/** Generalizes Phase 1's DeleteBucketDialog (originally S3-bucket-specific)
- * into the confirmation dialog every "delete this thing" and "are you
- * sure" action in the app needs — delete queue, delete table, delete
- * message, delete item all use this one component instead of their own
- * copy (Phase 3.4). */
+/** The one confirmation dialog every "delete this thing" / "are you sure"
+ * action in the app uses — delete queue, delete table, delete message,
+ * delete item all share this instead of each rolling their own. Started
+ * out as a bucket-delete-only dialog and got generalized once the second
+ * resource needed the same thing. */
 export function ConfirmDialog({
   open,
   title,

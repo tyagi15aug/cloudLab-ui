@@ -26,6 +26,10 @@ export function TableDetailPage() {
   const partitionKeyName = table.data?.partition_key.name ?? "id";
   const sortKeyName = table.data?.sort_key?.name ?? null;
 
+  // DynamoDB items don't have a single id field — the partition key (plus
+  // sort key, if the table has one) is what actually identifies a row, so
+  // that's what both the delete call and the row's React key are built
+  // from, rather than hashing the whole item.
   function keyOf(item: DynamoItem): DynamoItem {
     const key: DynamoItem = { [partitionKeyName]: item[partitionKeyName] };
     if (sortKeyName) key[sortKeyName] = item[sortKeyName];

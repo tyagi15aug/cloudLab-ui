@@ -13,9 +13,9 @@ function formatTimestamp(epochSeconds: number): string {
   return new Date(epochSeconds * 1000).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "medium" });
 }
 
-/** A plain metric tile (Phase 5.5) — deliberately not `SummaryCard`, which
- * links out to a resource page; these describe the process itself, not a
- * navigable resource. */
+/** A plain metric tile — deliberately not `SummaryCard`, which links out to
+ * a resource page; these describe the process itself, not a navigable
+ * resource. */
 function StatTile({ label, value, tone }: { label: string; value: string; tone?: "danger" }) {
   return (
     <div className="rounded-xl border border-border bg-surface-raised p-5 shadow-soft">

@@ -9,10 +9,10 @@ export interface FormFieldProps {
 }
 
 /** The label + input-slot + hint-or-error layout every create-resource
- * dialog needs (Phase 3.4) — extracted from Phase 1's CreateBucketDialog,
- * which had this markup inline, once CreateQueueDialog/CreateTableDialog
- * needed the identical thing. Owns layout only; the actual `<input>` /
- * `<select>` stays with the caller since field types genuinely differ. */
+ * dialog needs — extracted from CreateBucketDialog, which had this markup
+ * inline, once CreateQueueDialog/CreateTableDialog needed the identical
+ * thing. Owns layout only; the actual `<input>` / `<select>` stays with
+ * the caller since field types genuinely differ. */
 export function FormField({ id, label, error, hint, children }: FormFieldProps) {
   return (
     <div>

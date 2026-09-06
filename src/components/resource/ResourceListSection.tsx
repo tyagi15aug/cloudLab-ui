@@ -19,11 +19,11 @@ export interface ResourceListSectionProps<T> {
 }
 
 /** The loading/error/empty/table state machine every resource list page in
- * this app needs (Phase 3.4) — originally written once, inline, in
- * BucketList (Phase 1); extracted here once SQS queues and DynamoDB tables
- * needed the identical branching. A resource page now only has to supply
- * *what* a row looks like (columns + actions), not re-derive *when* to
- * show a skeleton vs. an error vs. an empty state. */
+ * this app needs — originally written once, inline, in BucketList, then
+ * extracted here once SQS queues and DynamoDB tables needed the identical
+ * branching. A resource page now only has to supply *what* a row looks
+ * like (columns + actions), not re-derive *when* to show a skeleton vs.
+ * an error vs. an empty state. */
 export function ResourceListSection<T>({
   data,
   isLoading,

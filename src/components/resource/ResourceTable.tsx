@@ -15,10 +15,10 @@ export interface ResourceTableProps<T> {
   renderActions?: (row: T) => ReactNode;
 }
 
-/** A plain, resource-agnostic data table (Phase 3.4). BucketList was the
- * only table in the app until SQS/DynamoDB queues/tables/items needed the
- * exact same layout — this is that layout, parameterized by columns
- * instead of copy-pasted per resource. */
+/** A plain, resource-agnostic data table. BucketList was the only table in
+ * the app until SQS/DynamoDB queues/tables/items needed the exact same
+ * layout — this is that layout, parameterized by columns instead of
+ * copy-pasted per resource. */
 export function ResourceTable<T>({ columns, rows, rowKey, renderActions }: ResourceTableProps<T>) {
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-surface-raised shadow-soft">
