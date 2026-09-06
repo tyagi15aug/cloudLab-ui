@@ -2,7 +2,9 @@ import { http, HttpResponse } from "msw";
 import type {
   BucketList,
   BucketResource,
+  CreateFailureRuleRequest,
   DynamoItem,
+  FailureRuleResource,
   MessageResource,
   QueueResource,
   TableResource,
@@ -131,6 +133,35 @@ export const handlers = [
   }),
 
   http.post("/api/resources/dynamodb/tables/:name/items/delete", () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  // -- Dev: failure injection --------------------------------------------
+  http.get("/api/dev/failures", () => {
+    return HttpResponse.json({ items: [] });
+  }),
+
+  http.post("/api/dev/failures", async ({ request }) => {
+    const body = (await request.json()) as CreateFailureRuleRequest;
+    return HttpResponse.json<FailureRuleResource>(
+      {
+        id: "fr-1",
+        service: body.service,
+        operation: body.operation,
+        failure: body.failure,
+        delay_ms: body.delay_ms ?? 0,
+        probability: body.probability ?? 1.0,
+        hit_count: 0,
+      },
+      { status: 201 },
+    );
+  }),
+
+  http.delete("/api/dev/failures/:id", () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.delete("/api/dev/failures", () => {
     return new HttpResponse(null, { status: 204 });
   }),
 ];

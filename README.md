@@ -4,13 +4,15 @@ React console for the [Cloud Control Plane](../cloud-control-plane-api)
 project — see that repo's `docs/implementation-plan.md` for the full design
 and phase plan.
 
-**Status:** Phases 1–3 done. Application shell, navigation, and S3, SQS,
+**Status:** Phases 1–4 done. Application shell, navigation, and S3, SQS,
 and DynamoDB workflows are implemented against the real backend API, with
 loading/empty/error states and light/dark theming throughout, plus a real
 Playwright E2E suite (`tests/e2e/`) driving the app in a browser against a
 live backend. SQS and DynamoDB share the same resource-list/dialog/table
 primitives S3 introduced in Phase 1 — see "Architecture" and "Phase 3"
-below for how that reuse works.
+below for how that reuse works. A Developer Tools page (Phase 4) can inject
+real backend failures (500s, timeouts, throttling, latency, connection
+failures) into any resource operation on demand — see "Phase 4" below.
 
 ## Quickstart
 
@@ -55,9 +57,9 @@ components/resource/         — ResourceTable, ResourceListSection, ConfirmDial
 components/s3/               — BucketList, CreateBucketDialog, DeleteBucketDialog
 components/sqs/               — QueueList, CreateQueueDialog, SendMessageDialog
 components/dynamodb/          — TableList, CreateTableDialog, PutItemDialog
-pages/                       — DashboardPage, S3Page, SqsPage, QueueDetailPage, DynamoDbPage, TableDetailPage, NotFoundPage
-api/                         — client.ts (fetch wrapper + ApiError), types.ts (mirrors the backend's Pydantic models), s3.ts, sqs.ts, dynamodb.ts
-hooks/                       — useBuckets/useCreateBucket/useDeleteBucket, useQueues/useMessages/useSendMessage, useTables/useItems/usePutItem (all TanStack Query), useCursorPager, useHealth
+pages/                       — DashboardPage, S3Page, SqsPage, QueueDetailPage, DynamoDbPage, TableDetailPage, DeveloperToolsPage, NotFoundPage
+api/                         — client.ts (fetch wrapper + ApiError), types.ts (mirrors the backend's Pydantic models), s3.ts, sqs.ts, dynamodb.ts, dev.ts (Phase 4)
+hooks/                       — useBuckets/useCreateBucket/useDeleteBucket, useQueues/useMessages/useSendMessage, useTables/useItems/usePutItem, useFailures/useCreateFailure/useDeleteFailure (all TanStack Query), useCursorPager, useHealth
 theme/                       — ThemeProvider
 ```
 
@@ -83,7 +85,7 @@ theme/                       — ThemeProvider
 ## Tests
 
 ```bash
-npm test          # vitest — 61 tests across S3, SQS, DynamoDB components, shared resource primitives, and ThemeProvider
+npm test          # vitest — 66 tests across S3, SQS, DynamoDB, Developer Tools components, shared resource primitives, and ThemeProvider
 npm run lint
 npm run typecheck
 npm run build
@@ -112,9 +114,9 @@ running backend** — no MSW. `sqs.spec.ts` and `dynamodb.spec.ts` cover
 their full create → use → delete lifecycles, including a float-value item
 in DynamoDB (guarding the backend's `Decimal` round-trip) and a careful
 single "Receive messages" click in SQS (see `tests/e2e/README.md`'s note
-on why). See that file for what each spec covers and why
-`resilience.spec.ts` uses network interception rather than a real failure
-source (that's Phase 4).
+on why). `failure-injection.spec.ts` and `resilience.spec.ts` drive the
+real `/api/dev/failures` endpoint (Phase 4) rather than any network
+interception — see `tests/e2e/README.md` for what each spec covers.
 
 ## CI
 
@@ -178,4 +180,45 @@ rather than forcing artificial uniformity (Phase 3.1's guidance):
   actually accepts.
 
 EC2 and VPC remain in the sidebar (badged "Soon") for the resource
-roadmap Phase 4+ covers.
+roadmap Phase 5+ covers.
+
+## Phase 4 — Failure Injection
+
+Phase 4's exit criterion (per the implementation plan) was a real failure
+source the UI and E2E suite could drive on demand, with the guarantee that
+no injected failure can leave the UI permanently stuck. The design:
+
+1. **No new layer — reuse the existing seam.** The backend's
+   `ProviderService._call()` (introduced in Phase 3 as the one method every
+   resource operation already funnels through, for logging and error
+   translation) is also where `failure_injector.apply()` is now consulted,
+   before the real boto3 call runs. Every existing and future resource
+   operation gets failure injection for free — nothing in `S3Service`,
+   `SqsService`, or `DynamoDbService` changed at all.
+2. **An in-memory, process-wide rule registry**, not persisted and not
+   authenticated (deferred to a later phase — see the backend README).
+   Rules match on `service`/`operation` with `"*"` wildcards (e.g. "fail
+   every SQS operation"), and carry a `probability` and `delay_ms` so a
+   rule can be partial or slow rather than absolute.
+3. **`latency` and `timeout` are deliberately different failure types**,
+   not synonyms: `latency` sleeps `delay_ms` and then lets the real call
+   succeed — useful for testing that slow-but-working calls don't
+   misrender as errors. `timeout` sleeps and then raises a retryable
+   `PROVIDER_UNAVAILABLE`, simulating a call that was slow *and* ultimately
+   failed.
+4. **The Developer Tools page** (`/dev/failures`, sidebar-linked, not
+   route-guarded) is a plain form over the same `useMutation`/`useQuery`
+   patterns as every other page here — Service/Operation selects cascade
+   (choosing a service resets the operation to "any"), a Failure type
+   select shows a one-line description of what that failure does, and the
+   active-rules table reuses `ResourceListSection` like every other
+   resource list in this app, right down to per-row delete buttons.
+5. **`resilience.spec.ts` went from simulated to real.** It used to
+   intercept requests with `page.route()` because no real failure source
+   existed; now that `/api/dev/failures` is real, it (and the new
+   `failure-injection.spec.ts`) drive that endpoint directly with
+   Playwright's built-in `request` fixture — see `tests/e2e/README.md` for
+   the full story.
+
+EC2 and VPC remain in the sidebar (badged "Soon") for the resource
+roadmap Phase 5+ covers.

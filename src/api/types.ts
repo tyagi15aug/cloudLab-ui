@@ -89,6 +89,33 @@ export interface ItemList {
   next_cursor: string | null;
 }
 
+// -- Dev: failure injection (mirrors app/core/failure_injection.py +
+// app/models/failure_injection.py, Phase 4) --------------------------------
+
+export type FailureType = "http_500" | "http_403" | "timeout" | "latency" | "throttle" | "connection_failure";
+
+export interface FailureRuleResource {
+  id: string;
+  service: string;
+  operation: string;
+  failure: FailureType;
+  delay_ms: number;
+  probability: number;
+  hit_count: number;
+}
+
+export interface FailureRuleList {
+  items: FailureRuleResource[];
+}
+
+export interface CreateFailureRuleRequest {
+  service: string;
+  operation: string;
+  failure: FailureType;
+  delay_ms?: number;
+  probability?: number;
+}
+
 export type ErrorCode =
   | "VALIDATION_ERROR"
   | "RESOURCE_NOT_FOUND"

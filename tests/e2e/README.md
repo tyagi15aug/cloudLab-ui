@@ -1,9 +1,9 @@
-# E2E tests (Phase 2.3)
+# E2E tests (Phase 2.3, extended through Phase 4)
 
 [Playwright](https://playwright.dev) tests that drive the real app in a
-real browser against a **real backend** — no MSW, no mocks, except where a
-test explicitly intercepts the network to simulate a failure the backend
-can't currently produce on demand (see `resilience.spec.ts`).
+real browser against a **real backend** — no MSW, no mocks, no network
+interception anywhere in this suite as of Phase 4 (see the note below on
+`resilience.spec.ts`, which used to be the exception).
 
 ## Running them
 
@@ -30,7 +30,8 @@ can't currently produce on demand (see `resilience.spec.ts`).
 | `sqs.spec.ts` | Create queue → send → receive → delete message → delete queue, plus client-side name validation |
 | `dynamodb.spec.ts` | Create table → put item (including a float, to catch the `Decimal` round-trip bug) → delete item → delete table, plus client-side validation |
 | `theme.spec.ts` | Light/dark toggle, and that the choice survives a reload (the pre-paint script in `index.html`) |
-| `resilience.spec.ts` | UI behavior on a failed list load and a failed create — see the note below |
+| `failure-injection.spec.ts` | The Developer Tools page itself: inject a rule through the UI, watch a real resource action fail because of it, clear it, watch it succeed |
+| `resilience.spec.ts` | UI behavior on a failed list load, a failed create, and artificial latency — now driven by the real failure-injection API, see the note below |
 | `global-setup.ts` | Fails fast with a clear message if no backend is reachable, instead of 20 confusing timeouts |
 
 ## A note on sqs.spec.ts and message polling
@@ -45,16 +46,21 @@ respect the same constraint: it clicks "Receive messages" exactly once
 after sending, rather than polling in a loop, so the test can't reintroduce
 the same race it exists to guard against.
 
-## Why route interception for "resilience"
+## resilience.spec.ts now drives the real failure-injection API
 
-Phase 4 of the plan adds a real failure-injection layer *inside* the
-backend (`AppError`s triggered on demand — 500s, timeouts, throttling —
-between the provider and LocalStack). Until that exists, `resilience.spec.ts`
-simulates the same failures at the network layer with Playwright's
-`page.route()`, which is honest about what it's testing (the UI's handling
-of a given HTTP response) without pretending there's a real failure source
-yet. Once Phase 4 ships, the equivalent tests belong here too, switched to
-drive the real injection API instead of intercepting requests.
+`resilience.spec.ts` used to simulate backend failures at the network layer
+with Playwright's `page.route()`, because no real failure source existed
+yet. Phase 4 added one — `/api/dev/failures`
+(`cloud-control-plane-api/app/core/failure_injection.py`) sits inside
+`ProviderService._call()`, the same seam every resource service's calls
+already funnel through, so a rule posted there really does make the next
+matching call fail. Every test in this file now uses Playwright's built-in
+`request` fixture to POST/DELETE real rules before/after driving the UI —
+the honest end-to-end version of what route interception used to stand in
+for: real HTTP request → `ProviderService._call()` → injected `AppError` →
+real error envelope → UI error state. Each test clears every rule in
+`finally` so a failure can't leak into whichever spec runs next (all E2E
+specs share one backend process and its process-wide failure registry).
 
 ## Environment note
 

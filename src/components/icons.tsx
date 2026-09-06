@@ -119,3 +119,11 @@ export function ExternalLinkIcon(props: IconProps) {
     </svg>
   );
 }
+
+export function BoltIcon(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M11 2.5 4.5 11.5h4.2L8 17.5l6.5-9.5h-4.2L11 2.5Z" />
+    </svg>
+  );
+}

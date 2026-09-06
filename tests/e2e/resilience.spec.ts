@@ -1,79 +1,124 @@
 import { expect, test } from "@playwright/test";
 
 /**
- * These simulate backend failure/latency by intercepting the network at the
- * browser layer (Playwright's `page.route`) rather than through the real
- * backend. Phase 4 of the plan adds a real failure-injection layer between
- * the provider and LocalStack (500s/timeouts/throttling injected
- * server-side); once that exists, this file is where the equivalent
- * "does the UI actually handle it" tests belong, switched from route
- * interception to driving the real injection API. Until then, this is the
- * honest way to test the UI's failure paths without a real failure source.
+ * Phase 4 update: these used to simulate backend failure by intercepting
+ * the network at the browser layer (Playwright's `page.route`), because no
+ * real failure source existed yet — see git history for that version. Now
+ * that `/api/dev/failures` (app/core/failure_injection.py) is real, these
+ * drive the actual injection API instead, exercising the real path end to
+ * end: UI action -> real HTTP request -> ProviderService._call() ->
+ * injected AppError -> real error envelope -> UI error state. Each test
+ * clears every rule in `finally` so a failure can't leak into whichever
+ * spec runs next.
  */
 
 test.describe("resilience: backend failure handling", () => {
-  test("shows a retryable error state when the buckets list fails to load", async ({ page }) => {
-    let requestCount = 0;
-    await page.route("**/api/resources/s3/buckets**", async (route) => {
-      if (route.request().method() !== "GET") return route.fallback();
-      requestCount += 1;
-      // The QueryClient is configured with retry: 1 (main.tsx), so TanStack
-      // Query silently retries once before surfacing an error — fail the
-      // first two attempts (initial + automatic retry) so the error state
-      // actually renders, then let the user's manual Retry click through.
-      if (requestCount <= 2) {
-        await route.fulfill({
-          status: 500,
-          contentType: "application/json",
-          body: JSON.stringify({
-            error: {
-              code: "INTERNAL_ERROR",
-              message: "An unexpected error occurred.",
-              requestId: "e2e-mocked",
-              retryable: true,
-            },
-          }),
-        });
-        return;
-      }
-      return route.fallback();
+  test("shows a retryable error state when the buckets list fails to load, then recovers once cleared", async ({
+    page,
+    request,
+  }) => {
+    await request.post("/api/dev/failures", {
+      data: { service: "s3", operation: "ListBuckets", failure: "http_500" },
     });
 
-    await page.goto("/s3");
+    try {
+      await page.goto("/s3");
 
-    await expect(page.getByRole("alert")).toContainText("An unexpected error occurred.");
-    await page.getByRole("button", { name: "Retry" }).click();
+      await expect(page.getByRole("alert")).toContainText("Injected failure: internal server error.");
+      await expect(page.getByRole("button", { name: "Retry" })).toHaveCount(0); // http_500 isn't retryable
 
-    // Once the mocked failure is consumed, the retry hits the real backend
-    // and the normal table/empty state renders instead of the error state.
-    await expect(page.getByText("Couldn't load this")).toHaveCount(0);
+      // The plan's Phase 4.5 resilience shape: disable the failure, then
+      // retry — the UI should never be permanently stuck because of it.
+      await request.delete("/api/dev/failures");
+      await page.getByRole("button", { name: "Refresh buckets" }).click();
+
+      await expect(page.getByText("Couldn't load this")).toHaveCount(0);
+    } finally {
+      await request.delete("/api/dev/failures");
+    }
   });
 
-  test("keeps the create dialog open and shows the message on a 503", async ({ page }) => {
-    await page.route("**/api/resources/s3/buckets", async (route) => {
-      if (route.request().method() !== "POST") return route.fallback();
-      await route.fulfill({
-        status: 503,
-        contentType: "application/json",
-        body: JSON.stringify({
-          error: {
-            code: "PROVIDER_UNAVAILABLE",
-            message: "The cloud provider is temporarily unavailable.",
-            requestId: "e2e-mocked",
-            retryable: true,
-          },
-        }),
-      });
+  test("a throttled failure shows a Retry action (unlike the non-retryable 500 above) and recovers", async ({
+    page,
+    request,
+  }) => {
+    await request.post("/api/dev/failures", {
+      data: { service: "s3", operation: "ListBuckets", failure: "throttle" },
     });
 
-    await page.goto("/s3");
-    await page.getByRole("button", { name: "Create bucket" }).first().click();
-    await page.getByLabel("Bucket name").fill("e2e-unavailable-test");
-    await page.getByRole("dialog").getByRole("button", { name: "Create bucket" }).click();
+    try {
+      await page.goto("/s3");
+      await expect(page.getByRole("alert")).toContainText("Injected failure: request throttled.");
+      await expect(page.getByRole("button", { name: "Retry" })).toBeVisible(); // throttle IS retryable
 
-    await expect(page.getByRole("alert")).toContainText("temporarily unavailable");
-    // The dialog must not have closed on failure — only CreateBucketDialog's
-    // onSuccess callback closes it.
-    await expect(page.getByRole("dialog")).toBeVisible();
+      await request.delete("/api/dev/failures");
+      await page.getByRole("button", { name: "Retry" }).click();
+      await expect(page.getByText("Couldn't load this")).toHaveCount(0);
+    } finally {
+      await request.delete("/api/dev/failures");
+    }
+  });
+
+  test("keeps the create dialog open and shows the message on an injected connection failure", async ({
+    page,
+    request,
+  }) => {
+    await request.post("/api/dev/failures", {
+      data: { service: "s3", operation: "CreateBucket", failure: "connection_failure" },
+    });
+
+    try {
+      await page.goto("/s3");
+      await page.getByRole("button", { name: "Create bucket" }).first().click();
+      await page.getByLabel("Bucket name").fill("e2e-unavailable-test");
+      await page.getByRole("dialog").getByRole("button", { name: "Create bucket" }).click();
+
+      await expect(page.getByRole("alert")).toContainText("could not reach the provider");
+      // The dialog must not have closed on failure — only CreateBucketDialog's
+      // onSuccess callback closes it.
+      await expect(page.getByRole("dialog")).toBeVisible();
+    } finally {
+      await request.delete("/api/dev/failures");
+    }
+  });
+
+  test("artificial latency delays a request but still lets it succeed", async ({ page, request }) => {
+    // Wait for the page's own initial ListBuckets fetch to actually finish
+    // (not just the static heading, which renders before data loads) before
+    // injecting the rule below — otherwise clicking "Refresh buckets" can
+    // dedupe onto that still-in-flight, undelayed initial query instead of
+    // starting a fresh one, making the timing assertion flaky.
+    await Promise.all([
+      page.waitForResponse(
+        (r) => r.url().includes("/api/resources/s3/buckets") && r.request().method() === "GET",
+      ),
+      page.goto("/s3"),
+    ]);
+    await expect(page.getByRole("heading", { name: "S3 · Buckets" })).toBeVisible();
+
+    await request.post("/api/dev/failures", {
+      data: { service: "s3", operation: "ListBuckets", failure: "latency", delay_ms: 800 },
+    });
+
+    try {
+      // Time the actual network round trip (not page-lifecycle events,
+      // which resolve on the static shell long before the delayed fetch
+      // does) — click Refresh and wait for its response.
+      const start = Date.now();
+      const [response] = await Promise.all([
+        page.waitForResponse(
+          (r) => r.url().includes("/api/resources/s3/buckets") && r.request().method() === "GET",
+        ),
+        page.getByRole("button", { name: "Refresh buckets" }).click(),
+      ]);
+      const elapsedMs = Date.now() - start;
+
+      expect(response.status()).toBe(200);
+      expect(elapsedMs).toBeGreaterThanOrEqual(750); // small tolerance under the 800ms delay
+      // No error state — latency alone must never surface as a failure.
+      await expect(page.getByText("Couldn't load this")).toHaveCount(0);
+    } finally {
+      await request.delete("/api/dev/failures");
+    }
   });
 });
