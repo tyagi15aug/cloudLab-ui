@@ -1,6 +1,6 @@
-# cloudlab-ui
+# cloudLab-ui
 
-React console for the [CloudLab](../cloudlab-api)
+React console for the [CloudLab](../cloudLab-api)
 project — see that repo's `docs/implementation-plan.md` for the full design
 and phase plan.
 
@@ -19,7 +19,7 @@ and "Phase 5" below.
 
 ## Quickstart
 
-Requires `cloudlab-api` running (see its README —
+Requires `cloudLab-api` running (see its README —
 `docker compose up --build`, or run it standalone).
 
 ```bash
@@ -103,7 +103,7 @@ npm run build
 ### End-to-end (Playwright)
 
 ```bash
-# 1. start the real backend first (from cloudlab-api):
+# 1. start the real backend first (from cloudLab-api):
 ./scripts/dev-up.sh
 
 # 2. then, from this repo:

@@ -1,4 +1,4 @@
-// Mirrors cloudlab-api's app/models/resource.py exactly. Keeping
+// Mirrors cloudLab-api's app/models/resource.py exactly. Keeping
 // this file in sync by hand (rather than codegen) is a fine tradeoff at
 // this scale — one resource, four fields — see docs/adr if that changes.
 

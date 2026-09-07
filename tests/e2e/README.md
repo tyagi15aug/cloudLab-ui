@@ -7,7 +7,7 @@ interception anywhere in this suite as of Phase 4 (see the note below on
 
 ## Running them
 
-1. Start the backend first (from `cloudlab-api`):
+1. Start the backend first (from `cloudLab-api`):
    ```bash
    ./scripts/dev-up.sh          # docker compose: real LocalStack + API
    ```
@@ -52,7 +52,7 @@ the same race it exists to guard against.
 `resilience.spec.ts` used to simulate backend failures at the network layer
 with Playwright's `page.route()`, because no real failure source existed
 yet. Phase 4 added one — `/api/dev/failures`
-(`cloudlab-api/app/core/failure_injection.py`) sits inside
+(`cloudLab-api/app/core/failure_injection.py`) sits inside
 `ProviderService._call()`, the same seam every resource service's calls
 already funnel through, so a rule posted there really does make the next
 matching call fail. Every test in this file now uses Playwright's built-in
