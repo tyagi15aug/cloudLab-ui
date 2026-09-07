@@ -1,0 +1,22 @@
+# Render Blueprint for the CloudLab console (static Vite/React build).
+# Deploy: Render Dashboard -> New -> Blueprint -> point at this repo.
+#
+# After cloudlab-api is deployed (separate Blueprint/repo), set
+# VITE_API_BASE_URL below to its real URL, e.g.
+# https://cloudlab-api.onrender.com — then also tighten that API's
+# CORS_ALLOW_ORIGINS to this site's URL instead of "*".
+services:
+  - type: web
+    runtime: static
+    name: cloudlab-ui
+    buildCommand: npm ci && npm run build
+    staticPublishPath: ./dist
+    envVars:
+      - key: VITE_API_BASE_URL
+        value: ""
+    routes:
+      # Client-side routing (react-router-dom) — any path not matching a
+      # real static file falls through to index.html.
+      - type: rewrite
+        source: /*
+        destination: /index.html

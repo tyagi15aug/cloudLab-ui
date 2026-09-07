@@ -273,3 +273,17 @@ this phase adds the developer-facing surface on top of them:
 
 EC2 and VPC remain in the sidebar (badged "Soon") for the resource
 roadmap later phases cover.
+
+## Deploying to Render
+
+`render.yaml` in this repo is a Render Blueprint for a static site (Vite
+build, published from `dist/`), with a rewrite rule so client-side routing
+(`react-router-dom`) works on a hard refresh/direct link.
+
+To deploy: Render Dashboard → New → Blueprint → point at this repo. Once
+`cloudlab-api` (separate repo/Blueprint) is deployed, set this service's
+`VITE_API_BASE_URL` env var to the API's real URL and redeploy — then
+tighten the API's `CORS_ALLOW_ORIGINS` to this site's URL.
+
+Static sites on Render have no cold start of their own; only the API and
+LocalStack behind it do.
