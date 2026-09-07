@@ -73,7 +73,7 @@ export function Sidebar() {
         <div className="flex h-6 w-6 items-center justify-center rounded-md bg-accent text-accent-ink">
           <BucketIcon width={14} height={14} />
         </div>
-        <span className="text-sm font-semibold tracking-tight text-ink">Cloud Control Plane</span>
+        <span className="text-sm font-semibold tracking-tight text-ink">CloudLab</span>
       </div>
 
       <nav className="flex-1 overflow-y-auto px-3 py-2">

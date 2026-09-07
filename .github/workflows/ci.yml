@@ -45,7 +45,7 @@ jobs:
       # first authored in — see that repo's README).
       - uses: actions/checkout@v4
         with:
-          repository: ${{ github.repository_owner }}/cloud-control-plane-api
+          repository: ${{ github.repository_owner }}/cloudlab-api
           path: api
 
       - name: Start API + LocalStack

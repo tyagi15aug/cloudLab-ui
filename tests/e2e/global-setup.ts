@@ -22,7 +22,7 @@ export default async function globalSetup(): Promise<void> {
     throw new Error(
       `\n\nE2E tests need a running backend API at ${API_URL}, and it isn't reachable.\n` +
         "Start it first:\n" +
-        "  cd ../cloud-control-plane-api && ./scripts/dev-up.sh   (docker compose)\n" +
+        "  cd ../cloudlab-api && ./scripts/dev-up.sh   (docker compose)\n" +
         "or point E2E_API_URL at wherever it's already running.\n",
       { cause },
     );

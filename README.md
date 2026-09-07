@@ -1,6 +1,6 @@
-# cloud-control-plane-web
+# cloudlab-ui
 
-React console for the [Cloud Control Plane](../cloud-control-plane-api)
+React console for the [CloudLab](../cloudlab-api)
 project — see that repo's `docs/implementation-plan.md` for the full design
 and phase plan.
 
@@ -19,7 +19,7 @@ and "Phase 5" below.
 
 ## Quickstart
 
-Requires `cloud-control-plane-api` running (see its README —
+Requires `cloudlab-api` running (see its README —
 `docker compose up --build`, or run it standalone).
 
 ```bash
@@ -103,7 +103,7 @@ npm run build
 ### End-to-end (Playwright)
 
 ```bash
-# 1. start the real backend first (from cloud-control-plane-api):
+# 1. start the real backend first (from cloudlab-api):
 ./scripts/dev-up.sh
 
 # 2. then, from this repo:
