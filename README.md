@@ -1,4 +1,4 @@
-# cloudLab-ui
+# Cloud Lab - UI
 
 React console for the [CloudLab](../cloudLab-api)
 project — see that repo's `docs/implementation-plan.md` for the full design
