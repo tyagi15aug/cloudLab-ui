@@ -128,6 +128,14 @@ export function BoltIcon(props: IconProps) {
   );
 }
 
+export function CheckIcon(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M4 10.5l3.5 3.5L16 5.5" />
+    </svg>
+  );
+}
+
 export function ActivityIcon(props: IconProps) {
   return (
     <svg {...base} {...props}>

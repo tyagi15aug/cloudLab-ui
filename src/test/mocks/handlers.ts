@@ -51,6 +51,10 @@ export const handlers = [
     return HttpResponse.json({ status: "ok", provider: "localstack" });
   }),
 
+  http.get("/api/health", () => {
+    return HttpResponse.json({ api: "ready", localstack: "ready", overall: "ready" });
+  }),
+
   // -- SQS -------------------------------------------------------------
   http.post("/api/resources/sqs/queues", async ({ request }) => {
     const body = (await request.json()) as { name: string };
