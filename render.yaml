@@ -14,6 +14,13 @@ services:
     envVars:
       - key: VITE_API_BASE_URL
         value: "https://cloudlab-api.onrender.com"
+      # Lets the launch screen ping the emulator directly to help wake it
+      # from Render's free-tier hibernation -- see src/api/readiness.ts.
+      # Server-to-server calls from cloudlab-api alone were observed NOT
+      # reliably waking it (9+ minutes of timeouts), while a direct browser
+      # request woke it in seconds.
+      - key: VITE_LOCALSTACK_URL
+        value: "https://cloudlab-localstack.onrender.com"
     routes:
       # Client-side routing (react-router-dom) — any path not matching a
       # real static file falls through to index.html.
